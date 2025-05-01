@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Api\HttpResponseTrait;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BlogResource;
 use App\Models\Blog;
@@ -10,26 +11,18 @@ use Illuminate\Support\Facades\Validator;
 
 class BlogController extends Controller
 {
-
-    protected function errorResponse($errorCode, $errorMessage){
-        return response()->json([
-            'statusCode' => $errorCode,
-            'message' => $errorMessage,
-        ], $errorCode);
-    }
+    use HttpResponseTrait;
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         // getting all blogs 
-        $blogs = Blog::all();
+        $blogs = Blog::when($request->q, function($query) use($request) {
+            $query->where("title", "like", "%".$request->q."%");
+        } )->get();
 
-        return response()->json([
-            'statusCode' => 200,
-            'message' => 'all blogs retrived successfully',
-            'blogs' => BlogResource::collection($blogs),
-        ], 200);
+        return $this->successResponse(200, "blogs was retrived successfully", ["blogs" => BlogResource::collection($blogs)] );
     }
 
     /**
@@ -51,11 +44,7 @@ class BlogController extends Controller
             'body' => $request['body'],
         ]);
 
-        return response()->json([
-            'statusCode' => 201,
-            'blog' => $blog,
-            'message' => 'a blog created successfully',
-        ], 201);
+        return $this->successResponse(201, "blog was created successfully", ["blog" => new BlogResource($blog)]);
     }
 
     /**
@@ -63,11 +52,7 @@ class BlogController extends Controller
      */
     public function show(Blog $blog)
     {
-        return response()->json([
-            'statusCode' => 200,
-            'message' => 'blog retrived successfully',
-            'blog' => new BlogResource($blog),
-        ], 200);
+        return $this->successResponse(200, "blog was retrived successfully", ["blog" => new BlogResource($blog)]);
     }
 
     /**
@@ -89,11 +74,7 @@ class BlogController extends Controller
             'body' => $request['body'],
         ]);
 
-        return response()->json([
-            'statusCode' => 200,
-            'message' => 'blog was updated successfully',
-            'blog' => new BlogResource($blog),
-        ], 200 );
+        return $this->successResponse(200, "blog was updated successfully", ["blog" => new BlogResource($blog)]);
         
     }
 
@@ -103,9 +84,6 @@ class BlogController extends Controller
     public function destroy(Blog $blog)
     {
         $blog->delete();
-        return response()->json([
-            'statusCode' => 200,
-            'message' => 'blog was deleted successfully',
-        ], 200);
+        return $this->successResponse(200, "blog was deleted successfully");
     }
 }
