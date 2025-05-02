@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Api\HttpResponseTrait;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BlogResource;
 use App\Models\Blog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Api\HttpResponseTrait;
 
 class BlogController extends Controller
 {
@@ -15,14 +15,12 @@ class BlogController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index()
     {
         // getting all blogs 
-        $blogs = Blog::when($request->q, function($query) use($request) {
-            $query->where("title", "like", "%".$request->q."%");
-        } )->get();
+        $blogs = Blog::with('category')->get();
 
-        return $this->successResponse(200, "blogs was retrived successfully", ["blogs" => BlogResource::collection($blogs)] );
+        return $this->successResponse(200, "blogs was retrived successfully", BlogResource::collection($blogs));
     }
 
     /**
@@ -31,6 +29,7 @@ class BlogController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            "category_id" => "required|exists:categories,id",
             'title' => "required|string|max:255|unique:blogs,title",
             'body' => "required|string",
         ]);
@@ -39,12 +38,10 @@ class BlogController extends Controller
             return $this->errorResponse(400, $validator->errors());
         }
 
-        $blog = Blog::create([
-            'title' => $request['title'],
-            'body' => $request['body'],
-        ]);
+        return $validator->validated();
+        $blog = Blog::create($validator->validated());
 
-        return $this->successResponse(201, "blog was created successfully", ["blog" => new BlogResource($blog)]);
+        return $this->successResponse(201, "a blog was created successfully", new BlogResource($blog));
     }
 
     /**
@@ -52,7 +49,7 @@ class BlogController extends Controller
      */
     public function show(Blog $blog)
     {
-        return $this->successResponse(200, "blog was retrived successfully", ["blog" => new BlogResource($blog)]);
+        return $this->successResponse(200, "blog was retrived successfully", new BlogResource($blog));
     }
 
     /**
@@ -61,6 +58,7 @@ class BlogController extends Controller
     public function update(Request $request, Blog $blog)
     {
         $validator = Validator::make($request->all(), [
+            "category_id" => "required|exists:categories,id",
             'title' => "required|string|max:255|unique:blogs,title,".$blog->id,
             'body' => "required|string"
         ]);
@@ -69,12 +67,9 @@ class BlogController extends Controller
             return $this->errorResponse(400, $validator->errors());
         }
 
-        $blog->update([
-            'title' => $request['title'],
-            'body' => $request['body'],
-        ]);
+        $blog->update($validator->validated());
 
-        return $this->successResponse(200, "blog was updated successfully", ["blog" => new BlogResource($blog)]);
+        return $this->successResponse(200, "blog was updated successfully", new BlogResource($blog));
         
     }
 
@@ -84,6 +79,6 @@ class BlogController extends Controller
     public function destroy(Blog $blog)
     {
         $blog->delete();
-        return $this->successResponse(200, "blog was deleted successfully");
+        return $this->successResponse(200, "blog was deleted successfully", );
     }
 }
